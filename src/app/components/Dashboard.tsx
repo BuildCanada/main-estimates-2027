@@ -284,15 +284,17 @@ export default function Dashboard() {
       {/* Header */}
       <header className="bg-white border-b border-[#e0e0e0]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#932f2f] flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11m16-11v11M8 14v4m4-4v4m4-4v4" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-[#272727] font-[Soehne_Kraftig]">2026–27 Main Estimates</h1>
-              <p className="text-sm text-[#868686]">Government of Canada · Treasury Board Secretariat</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <a href="https://canadaspends.com/en" target="_blank" rel="noopener noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://canadaspends.com/_next/static/media/logo-full.3199769c.svg" alt="Canada Spends" className="h-10" />
+              </a>
+              <div className="w-px h-8 bg-[#e0e0e0]" />
+              <div>
+                <h1 className="text-2xl font-bold text-[#272727] font-[Soehne_Kraftig]">2026–27 Main Estimates</h1>
+                <p className="text-sm text-[#868686]">Government of Canada · Treasury Board Secretariat</p>
+              </div>
             </div>
           </div>
 
