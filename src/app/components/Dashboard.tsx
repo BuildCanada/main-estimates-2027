@@ -21,6 +21,7 @@ import {
   YEAR_OVER_YEAR,
   DEPARTMENTS,
   KEY_HIGHLIGHTS,
+  WINNERS_LOSERS,
   type Department,
 } from "../data/estimates";
 
@@ -96,7 +97,7 @@ function InsightCard({ title, detail, icon }: { title: string; detail: string; i
         {ICON_MAP[icon] ?? ICON_MAP.shield}
       </div>
       <div>
-        <p className="font-semibold text-[#272727] font-[Soehne_Kraftig]">{title}</p>
+        <p className="font-normal text-[#272727] font-[Soehne_Kraftig]">{title}</p>
         <p className="mt-1 text-sm text-[#868686] leading-relaxed">{detail}</p>
       </div>
     </div>
@@ -125,10 +126,10 @@ function TreemapContent(props: any) {
   return (
     <g>
       <rect x={x} y={y} width={width} height={height} style={{ fill: props.color || "#418599", stroke: "#fff", strokeWidth: 2, opacity: 0.9 }} />
-      <text x={x + width / 2} y={y + height / 2 - 8} textAnchor="middle" fill="#fff" fontSize={width < 100 ? 10 : 12} fontWeight="600">
+      <text x={x + width / 2} y={y + height / 2 - 8} textAnchor="middle" fill="#fff" fontSize={width < 100 ? 10 : 12} fontWeight="400" fontFamily="Soehne Kraftig, sans-serif">
         {name && name.length > (width < 100 ? 12 : 20) ? name.slice(0, width < 100 ? 10 : 18) + "…" : name}
       </text>
-      <text x={x + width / 2} y={y + height / 2 + 10} textAnchor="middle" fill="#fff" fontSize={11} opacity={0.9}>
+      <text x={x + width / 2} y={y + height / 2 + 10} textAnchor="middle" fill="#fff" fontSize={11} opacity={0.9} fontFamily="Founders Grotesk Mono, monospace">
         {fmtM(value)}
       </text>
     </g>
@@ -167,6 +168,9 @@ function DeptTable({
             <th className="py-3 px-4 font-semibold text-[#6d6d6d] text-right cursor-pointer hover:text-[#272727] select-none" onClick={() => onSort("total")}>
               Total{arrow("total")}
             </th>
+            <th className="py-3 px-4 font-semibold text-[#6d6d6d] text-right cursor-pointer hover:text-[#272727] select-none" onClick={() => onSort("prevTotal")}>
+              YoY Change{arrow("prevTotal")}
+            </th>
             <th className="py-3 px-4 font-semibold text-[#6d6d6d] w-48">Share of Voted</th>
           </tr>
         </thead>
@@ -179,6 +183,18 @@ function DeptTable({
                 <td className="py-3 px-4 text-right tabular-nums font-[Founders_Grotesk_Mono]">{fmtM(d.voted)}</td>
                 <td className="py-3 px-4 text-right tabular-nums font-[Founders_Grotesk_Mono]">{fmtM(d.statutory)}</td>
                 <td className="py-3 px-4 text-right font-semibold tabular-nums font-[Founders_Grotesk_Mono]">{fmtM(d.total)}</td>
+                <td className="py-3 px-4 text-right tabular-nums font-[Founders_Grotesk_Mono]">
+                  {(() => {
+                    const pctChange = ((d.total - d.prevTotal) / d.prevTotal) * 100;
+                    const isUp = pctChange > 0;
+                    const color = isUp ? "text-[#2AB34B]" : "text-[#932f2f]";
+                    return (
+                      <span className={color}>
+                        {isUp ? "+" : ""}{pctChange.toFixed(1)}%
+                      </span>
+                    );
+                  })()}
+                </td>
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-2 bg-[#e0e0e0] rounded-full overflow-hidden">
@@ -214,7 +230,7 @@ export default function Dashboard() {
   const [sortKey, setSortKey] = useState<keyof Department>("voted");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [deptFilter, setDeptFilter] = useState("");
-  const [tab, setTab] = useState<"overview" | "departments" | "insights">("overview");
+  const [tab, setTab] = useState<"overview" | "departments" | "insights" | "winners-losers">("overview");
 
   function handleSort(key: keyof Department) {
     if (key === sortKey) setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -227,6 +243,11 @@ export default function Dashboard() {
   const sortedDepts = useMemo(() => {
     let filtered = DEPARTMENTS.filter((d) => d.name.toLowerCase().includes(deptFilter.toLowerCase()));
     return filtered.sort((a, b) => {
+      if (sortKey === "prevTotal") {
+        const av = ((a.total - a.prevTotal) / a.prevTotal) * 100;
+        const bv = ((b.total - b.prevTotal) / b.prevTotal) * 100;
+        return sortDir === "asc" ? av - bv : bv - av;
+      }
       const av = a[sortKey];
       const bv = b[sortKey];
       if (typeof av === "string" && typeof bv === "string") return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
@@ -255,6 +276,7 @@ export default function Dashboard() {
     { id: "overview" as const, label: "Overview" },
     { id: "departments" as const, label: "Departments" },
     { id: "insights" as const, label: "Key Insights" },
+    { id: "winners-losers" as const, label: "Winners & Losers" },
   ];
 
   return (
@@ -292,22 +314,22 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Stat Cards — always visible */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label="Total Budgetary" value={fmt(TOTAL.totalBudgetary)} sub={`+$${(TOTAL.totalBudgetary - YEAR_OVER_YEAR[1].total).toFixed(1)}B vs 25–26 ME`} accent="text-[#272727]" />
+          <StatCard label="Voted Authorities" value={fmt(TOTAL.budgetaryVoted)} sub="Requires Parliament approval" accent="text-[#418599]" />
+          <StatCard label="Statutory Spending" value={fmt(TOTAL.budgetaryStatutory)} sub="Already authorized by law" accent="text-[#932f2f]" />
+          <StatCard label="Public Debt Interest" value={fmt(COMPOSITION[2].value)} sub="+$4.6B year-over-year" accent="text-[#AF5D16]" />
+        </div>
+
         {/* ─── OVERVIEW TAB ─────────────────────────── */}
         {tab === "overview" && (
           <>
-            {/* Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard label="Total Budgetary" value={fmt(TOTAL.totalBudgetary)} sub="Voted + Statutory" accent="text-[#272727]" />
-              <StatCard label="Voted" value={fmt(TOTAL.budgetaryVoted)} sub={`${((TOTAL.budgetaryVoted / TOTAL.totalBudgetary) * 100).toFixed(1)}% of total`} accent="text-[#418599]" />
-              <StatCard label="Statutory" value={fmt(TOTAL.budgetaryStatutory)} sub={`${((TOTAL.budgetaryStatutory / TOTAL.totalBudgetary) * 100).toFixed(1)}% of total`} accent="text-[#932f2f]" />
-              <StatCard label="Non-Budgetary" value={fmt(TOTAL.nonBudgetary)} sub="Loans, investments, advances" accent="text-[#AF5D16]" />
-            </div>
-
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Composition Donut */}
               <div className="bg-white shadow-sm border border-[#e0e0e0] p-6">
-                <h2 className="text-lg font-semibold text-[#272727] font-[Soehne_Kraftig] mb-4">Spending Composition</h2>
+                <h2 className="text-lg font-normal text-[#272727] font-[Soehne_Kraftig] mb-4">Spending Composition</h2>
                 <ResponsiveContainer width="100%" height={320}>
                   <PieChart>
                     <Pie
@@ -339,7 +361,7 @@ export default function Dashboard() {
 
               {/* Year-over-Year */}
               <div className="bg-white shadow-sm border border-[#e0e0e0] p-6">
-                <h2 className="text-lg font-semibold text-[#272727] font-[Soehne_Kraftig] mb-4">Year-over-Year Comparison</h2>
+                <h2 className="text-lg font-normal text-[#272727] font-[Soehne_Kraftig] mb-4">Year-over-Year Comparison</h2>
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={YEAR_OVER_YEAR} barCategoryGap="20%">
                     <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
@@ -356,7 +378,7 @@ export default function Dashboard() {
 
             {/* Treemap */}
             <div className="bg-white shadow-sm border border-[#e0e0e0] p-6">
-              <h2 className="text-lg font-semibold text-[#272727] font-[Soehne_Kraftig] mb-1">Voted Spending by Department</h2>
+              <h2 className="text-lg font-normal text-[#272727] font-[Soehne_Kraftig] mb-1">Voted Spending by Department</h2>
               <p className="text-sm text-[#868686] mb-4">Size represents voted estimates. Hover for details.</p>
               <ResponsiveContainer width="100%" height={420}>
                 <Treemap
@@ -385,7 +407,7 @@ export default function Dashboard() {
             <div className="bg-white shadow-sm border border-[#e0e0e0] p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
-                  <h2 className="text-lg font-semibold text-[#272727] font-[Soehne_Kraftig]">All Departments & Agencies</h2>
+                  <h2 className="text-lg font-normal text-[#272727] font-[Soehne_Kraftig]">All Departments & Agencies</h2>
                   <p className="text-sm text-[#868686]">{sortedDepts.length} organizations · Click column headers to sort</p>
                 </div>
                 <input
@@ -401,7 +423,7 @@ export default function Dashboard() {
 
             {/* Top Voted Bar Chart */}
             <div className="bg-white shadow-sm border border-[#e0e0e0] p-6">
-              <h2 className="text-lg font-semibold text-[#272727] font-[Soehne_Kraftig] mb-4">Top 10 Departments by Voted Estimates</h2>
+              <h2 className="text-lg font-normal text-[#272727] font-[Soehne_Kraftig] mb-4">Top 10 Departments by Voted Estimates</h2>
               <ResponsiveContainer width="100%" height={400}>
                 <BarChart
                   data={DEPARTMENTS.sort((a, b) => b.voted - a.voted).slice(0, 10)}
@@ -419,7 +441,7 @@ export default function Dashboard() {
 
             {/* Voted vs Statutory Stacked */}
             <div className="bg-white shadow-sm border border-[#e0e0e0] p-6">
-              <h2 className="text-lg font-semibold text-[#272727] font-[Soehne_Kraftig] mb-4">Top 10 by Total: Voted vs Statutory</h2>
+              <h2 className="text-lg font-normal text-[#272727] font-[Soehne_Kraftig] mb-4">Top 10 by Total: Voted vs Statutory</h2>
               <ResponsiveContainer width="100%" height={400}>
                 <BarChart
                   data={[...DEPARTMENTS].sort((a, b) => b.total - a.total).slice(0, 10)}
@@ -430,13 +452,56 @@ export default function Dashboard() {
                   <XAxis type="number" tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}B`} />
                   <YAxis dataKey="name" type="category" width={200} tick={{ fontSize: 11 }} />
                   <Tooltip content={<BillionTooltip />} />
-                  <Legend />
-                  <Bar dataKey="voted" name="Voted" stackId="a" fill="#932f2f" />
-                  <Bar dataKey="statutory" name="Statutory" stackId="a" fill="#418599" />
+                  <Legend content={() => (
+                    <div className="flex justify-center gap-5 mt-2 text-xs text-[#6d6d6d]">
+                      <span className="flex items-center gap-1"><span className="w-3 h-3" style={{ backgroundColor: "#932f2f" }} /> Voted</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-3" style={{ backgroundColor: "#418599" }} /> Statutory</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-3" style={{ backgroundColor: "#AF5D16" }} /> Debt & Provincial Transfers</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-3" style={{ backgroundColor: "#6d6d6d" }} /> Elderly Benefits</span>
+                    </div>
+                  )} />
+                  <Bar dataKey="voted" name="Voted" stackId="a">
+                    {[...DEPARTMENTS].sort((a, b) => b.total - a.total).slice(0, 10).map((d) => (
+                      <Cell key={d.name} fill={d.name === "Finance" ? "#AF5D16" : d.name === "Employment & Social Development" ? "#6d6d6d" : "#932f2f"} />
+                    ))}
+                  </Bar>
+                  <Bar dataKey="statutory" name="Statutory" stackId="a">
+                    {[...DEPARTMENTS].sort((a, b) => b.total - a.total).slice(0, 10).map((d) => (
+                      <Cell key={d.name} fill={d.name === "Finance" ? "#AF5D16" : d.name === "Employment & Social Development" ? "#6d6d6d" : "#418599"} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </>
+        )}
+
+        {/* ─── WINNERS & LOSERS TAB ────────────────── */}
+        {tab === "winners-losers" && (
+          <div className="space-y-3">
+            {WINNERS_LOSERS.map((item) => {
+              const borderColor = item.direction === "up" ? "#2AB34B" : item.direction === "down" ? "#932f2f" : "#9e9e9e";
+              const badgeBg = item.direction === "up" ? "bg-[#e8f5e9] text-[#2AB34B]" : item.direction === "down" ? "bg-[#fcf4f4] text-[#932f2f]" : "bg-[#f0f0f0] text-[#6d6d6d]";
+              return (
+                <div
+                  key={item.rank}
+                  className="flex items-start gap-5 bg-white border border-[#e0e0e0] p-5 shadow-sm hover:shadow-md transition-shadow"
+                  style={{ borderLeft: `3px solid ${borderColor}` }}
+                >
+                  <span className="text-2xl font-bold text-[#9e9e9e] font-[Founders_Grotesk_Mono] w-8 flex-shrink-0 text-right tabular-nums">
+                    {item.rank}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-normal text-[#272727] font-[Soehne_Kraftig]">{item.headline}</p>
+                    <p className="mt-1 text-sm text-[#868686] leading-relaxed">{item.detail}</p>
+                  </div>
+                  <span className={`flex-shrink-0 px-3 py-1 text-sm font-semibold font-[Founders_Grotesk_Mono] ${badgeBg}`}>
+                    {item.delta}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         )}
 
         {/* ─── INSIGHTS TAB ─────────────────────────── */}
@@ -450,7 +515,7 @@ export default function Dashboard() {
 
             {/* Summary Cards for Quick Stats */}
             <div className="bg-white shadow-sm border border-[#e0e0e0] p-6">
-              <h2 className="text-lg font-semibold text-[#272727] font-[Soehne_Kraftig] mb-4">Quick Numbers</h2>
+              <h2 className="text-lg font-normal text-[#272727] font-[Soehne_Kraftig] mb-4">Quick Numbers</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div>
                   <p className="text-sm text-[#868686]">YoY Change (from 2025-26)</p>
@@ -477,7 +542,7 @@ export default function Dashboard() {
 
             {/* Composition detail */}
             <div className="bg-white shadow-sm border border-[#e0e0e0] p-6">
-              <h2 className="text-lg font-semibold text-[#272727] font-[Soehne_Kraftig] mb-4">Where Does Each Dollar Go?</h2>
+              <h2 className="text-lg font-normal text-[#272727] font-[Soehne_Kraftig] mb-4">Where Does Each Dollar Go?</h2>
               <div className="space-y-4">
                 {COMPOSITION.map((c) => (
                   <div key={c.name}>
